@@ -1,5 +1,10 @@
 import { NextResponse } from 'next/server';
 import { getFileStorage, generateFileId } from '@/lib/fileStorage';
+import { addCORSHeaders, handleCORSPreflight } from '@/lib/cors';
+
+export async function OPTIONS(request) {
+  return handleCORSPreflight();
+}
 
 export async function POST(request) {
   try {
@@ -7,10 +12,11 @@ export async function POST(request) {
     const file = formData.get('file');
 
     if (!file) {
-      return NextResponse.json(
+      const response = NextResponse.json(
         { error: 'No file provided' },
         { status: 400 }
       );
+      return addCORSHeaders(response);
     }
 
     // Convert file to buffer
@@ -29,7 +35,7 @@ export async function POST(request) {
       file.type
     );
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       file: {
         id: fileMetadata.id,
@@ -39,11 +45,13 @@ export async function POST(request) {
         uploadedAt: fileMetadata.uploadedAt,
       },
     });
+    return addCORSHeaders(response);
   } catch (error) {
     console.error('File upload error:', error);
-    return NextResponse.json(
+    const response = NextResponse.json(
       { error: 'Failed to upload file' },
       { status: 500 }
     );
+    return addCORSHeaders(response);
   }
 }

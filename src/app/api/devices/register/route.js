@@ -1,6 +1,11 @@
 import { NextResponse } from 'next/server';
 import { getDeviceRegistry } from '@/lib/deviceRegistry';
 import { getLocalIP } from '@/lib/getLocalIP';
+import { addCORSHeaders, handleCORSPreflight } from '@/lib/cors';
+
+export async function OPTIONS(request) {
+  return handleCORSPreflight();
+}
 
 export async function POST(request) {
   try {
@@ -8,10 +13,11 @@ export async function POST(request) {
     const { id, name, port } = body;
 
     if (!id) {
-      return NextResponse.json(
+      const response = NextResponse.json(
         { error: 'Device ID is required' },
         { status: 400 }
       );
+      return addCORSHeaders(response);
     }
 
     const registry = getDeviceRegistry();
@@ -24,12 +30,14 @@ export async function POST(request) {
       port: port || 3000,
     });
 
-    return NextResponse.json(device);
+    const response = NextResponse.json(device);
+    return addCORSHeaders(response);
   } catch (error) {
     console.error('Device registration error:', error);
-    return NextResponse.json(
+    const response = NextResponse.json(
       { error: 'Failed to register device' },
       { status: 500 }
     );
+    return addCORSHeaders(response);
   }
 }

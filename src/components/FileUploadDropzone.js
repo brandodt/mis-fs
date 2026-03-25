@@ -5,7 +5,7 @@ import { useFileTransfer } from '@/hooks/useFileTransfer';
 import { useAppStore } from '@/store/appStore';
 import toast from 'react-hot-toast';
 
-export function FileUploadDropzone() {
+export function FileShareDropzone() {
   const [isDragging, setIsDragging] = useState(false);
   const inputRef = useRef(null);
   const { uploadFile } = useFileTransfer();
@@ -92,10 +92,10 @@ export function FileUploadDropzone() {
           />
         </svg>
         <p className="text-lg font-medium text-gray-700 dark:text-gray-300">
-          Drop files here or click to upload
+          Drop files to share with other devices
         </p>
         <p className="text-sm text-gray-500 dark:text-gray-400">
-          Max file size: {maxFileSize}MB
+          Files will be shared directly over local network. Max: {maxFileSize}MB
         </p>
       </div>
     </div>

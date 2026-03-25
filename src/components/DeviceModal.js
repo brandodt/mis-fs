@@ -47,6 +47,11 @@ export function DeviceModal() {
           </button>
         </div>
 
+        {/* Info */}
+        <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded text-sm text-blue-900 dark:text-blue-200">
+          <p><strong>P2P Direct Streaming:</strong> Files are shared directly between devices. Sessions are temporary - files are deleted on reload.</p>
+        </div>
+
         {/* Device Name */}
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -61,7 +66,7 @@ export function DeviceModal() {
             />
             <button
               onClick={handleSaveName}
-              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition"
             >
               Save
             </button>
@@ -82,7 +87,7 @@ export function DeviceModal() {
             />
             <button
               onClick={handleCopyDeviceId}
-              className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
+              className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition"
             >
               Copy
             </button>
@@ -93,14 +98,17 @@ export function DeviceModal() {
         {deviceInfo.ip && (
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Local IP
+              Network Address
             </label>
             <input
               type="text"
               value={`${deviceInfo.ip}:${deviceInfo.port || 3000}`}
               readOnly
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700 dark:text-gray-100 bg-gray-50"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700 dark:text-gray-100 bg-gray-50 text-sm"
             />
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              Other devices connect to this address
+            </p>
           </div>
         )}
 
@@ -123,16 +131,16 @@ export function DeviceModal() {
         <div>
           <button
             onClick={clearSessionFiles}
-            className="w-full px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+            className="w-full px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition text-sm"
           >
-            Clear Session Files
+            Clear All Shared Files
           </button>
         </div>
 
         {/* Close Button */}
         <button
           onClick={() => setIsOpen(false)}
-          className="w-full px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
+          className="w-full px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition"
         >
           Close
         </button>
