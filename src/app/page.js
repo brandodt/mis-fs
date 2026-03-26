@@ -268,11 +268,10 @@ export default function Home() {
                     </div>
                     <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-1.5 overflow-hidden">
                       <div
-                        className={`h-full rounded-full transition-all duration-300 ${
-                          transfer.type === 'send'
-                            ? 'bg-gradient-to-r from-blue-500 to-blue-600'
-                            : 'bg-gradient-to-r from-green-500 to-emerald-600'
-                        }`}
+                        className={`h-full rounded-full transition-all duration-300 ${transfer.type === 'send'
+                          ? 'bg-gradient-to-r from-blue-500 to-blue-600'
+                          : 'bg-gradient-to-r from-green-500 to-emerald-600'
+                          }`}
                         style={{ width: `${transfer.progress}%` }}
                       />
                     </div>
@@ -499,22 +498,20 @@ export default function Home() {
           data-mode-toggle
           onClick={toggleMode}
           disabled={filesToSend.length > 0 && mode === 'send'}
-          className={`flex items-center gap-2 px-6 py-2 rounded-full font-semibold transition-all duration-300 ${
-            mode === 'send'
-              ? 'bg-blue-500 text-white'
-              : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-          }`}
+          className={`flex items-center gap-2 px-6 py-2 rounded-full font-semibold transition-all duration-300 ${mode === 'send'
+            ? 'bg-blue-500 text-white'
+            : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+            }`}
         >
           <Send className="w-4 h-4" />
           Send
         </button>
         <button
           onClick={toggleMode}
-          className={`flex items-center gap-2 px-6 py-2 rounded-full font-semibold transition-all duration-300 ${
-            mode === 'receive'
-              ? 'bg-green-500 text-white'
-              : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-          }`}
+          className={`flex items-center gap-2 px-6 py-2 rounded-full font-semibold transition-all duration-300 ${mode === 'receive'
+            ? 'bg-green-500 text-white'
+            : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+            }`}
         >
           <Inbox className="w-4 h-4" />
           Receive

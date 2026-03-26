@@ -1,5 +1,4 @@
 const { createServer } = require('http');
-const { parse } = require('url');
 const next = require('next');
 const { Server } = require('socket.io');
 const fs = require('fs');
@@ -19,8 +18,8 @@ const fileChunks = new Map(); // fileId -> { chunks: [], metadata }
 app.prepare().then(() => {
   const httpServer = createServer(async (req, res) => {
     try {
-      const parsedUrl = parse(req.url, true);
-      await handle(req, res, parsedUrl);
+      // Next.js parses the URL internally — no need to pass parsedUrl
+      await handle(req, res);
     } catch (err) {
       console.error('Error handling request:', err);
       res.statusCode = 500;
@@ -156,13 +155,15 @@ app.prepare().then(() => {
     });
   });
 
+  // Set a generous HTTP timeout (30 min) to support large file transfers.
+  // We do NOT log on timeout here — Next.js dev-mode compilation can take
+  // 30-60 s and would spam false-positive warnings.
+  httpServer.setTimeout(30 * 60 * 1000); // 30 minutes, no callback
+
   httpServer
     .once('error', (err) => {
       console.error(err);
       process.exit(1);
-    })
-    .setTimeout(600000, () => { // 10 minute timeout for long transfers
-      console.warn('Request timeout - may need to increase timeout for large files');
     })
     .listen(port, hostname, () => {
       const os = require('os');
