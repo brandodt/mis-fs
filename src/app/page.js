@@ -388,55 +388,76 @@ export default function Home() {
 
             {/* Received Files */}
             {filesReceived.length === 0 ? (
-              <div className="bg-gray-50 dark:bg-gray-800/50 rounded-2xl p-12 text-center border border-gray-200 dark:border-gray-700">
-                <Radio className="w-12 h-12 text-gray-400 mx-auto mb-4 animate-pulse" />
-                <p className="text-gray-600 dark:text-gray-400 text-lg font-medium">
-                  Waiting for files
-                </p>
-                <p className="text-gray-500 dark:text-gray-500 text-sm mt-2">
-                  Files will appear here when shared
-                </p>
+              <div className="rounded-2xl p-10 text-center border border-dashed border-gray-300 dark:border-gray-700">
+                <div className="w-14 h-14 rounded-full border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center mx-auto mb-4">
+                  <Radio className="w-6 h-6 text-gray-400 animate-pulse" />
+                </div>
+                <p className="text-gray-500 dark:text-gray-400 font-medium">Waiting for files</p>
+                <p className="text-gray-400 dark:text-gray-500 text-xs mt-1">Files download automatically when received</p>
               </div>
             ) : (
-              <div className="bg-gray-50 dark:bg-gray-800/50 rounded-2xl p-8 border border-gray-200 dark:border-gray-700">
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-3">
-                  <Download className="w-6 h-6 text-blue-500" />
-                  Received ({filesReceived.length})
-                </h2>
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                    <Download className="w-4 h-4 text-blue-500" />
+                    Received ({filesReceived.length})
+                  </h2>
+                  <span className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block" />
+                    Auto-downloaded
+                  </span>
+                </div>
 
                 <div className="space-y-2">
-                  {filesReceived.map((file) => (
-                    <div
-                      key={file.id}
-                      className="p-4 bg-white dark:bg-gray-700/50 rounded-lg flex justify-between items-center hover:bg-gray-100 dark:hover:bg-gray-600/50 transition-colors"
-                    >
-                      <div className="flex-1 min-w-0 flex items-center gap-3">
-                        <FileIcon className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                  {filesReceived.map((file) => {
+                    const ext = file.filename.split('.').pop()?.toLowerCase();
+                    const isVideo = ['mp4','mov','mkv','avi','webm'].includes(ext);
+                    const isImage = ['jpg','jpeg','png','gif','webp','svg'].includes(ext);
+                    const isAudio = ['mp3','wav','flac','aac','ogg'].includes(ext);
+                    const iconColor = isVideo ? 'text-purple-500 bg-purple-500/10' : isImage ? 'text-pink-500 bg-pink-500/10' : isAudio ? 'text-blue-500 bg-blue-500/10' : 'text-gray-500 bg-gray-500/10';
+                    return (
+                      <div
+                        key={file.id}
+                        className="group flex items-center gap-3 p-3 bg-white dark:bg-gray-800/60 rounded-xl border border-gray-100 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-700 transition-all duration-200"
+                      >
+                        {/* File type icon */}
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${iconColor}`}>
+                          <FileIcon className="w-5 h-5" />
+                        </div>
+
+                        {/* File info */}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
                             {file.filename}
                           </p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">
-                            {formatFileSize(file.size)} • From: {file.receivedFrom}
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                            {formatFileSize(file.size)} · from <span className="font-medium text-gray-600 dark:text-gray-300">{file.receivedFrom}</span>
                           </p>
                         </div>
+
+                        {/* Actions */}
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          <span className="text-xs text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-2 py-0.5 rounded-full font-medium hidden group-hover:hidden sm:flex">
+                            ✓ Saved
+                          </span>
+                          <button
+                            title="Re-download"
+                            onClick={() => downloadReceivedFile(file.id, file.filename, file.data)}
+                            className="p-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors text-blue-500"
+                          >
+                            <Download className="w-4 h-4" />
+                          </button>
+                          <button
+                            title="Remove"
+                            onClick={() => removeReceivedFile(file.id)}
+                            className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors text-gray-400 hover:text-red-500"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2 ml-4 flex-shrink-0">
-                        <button
-                          onClick={() => downloadReceivedFile(file.id, file.filename, file.data)}
-                          className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-lg transition-colors"
-                        >
-                          Download
-                        </button>
-                        <button
-                          onClick={() => removeReceivedFile(file.id)}
-                          className="p-2 hover:bg-red-100 dark:hover:bg-red-900/30 rounded transition-colors"
-                        >
-                          <X className="w-4 h-4 text-red-500" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}

@@ -32,9 +32,11 @@ app.prepare().then(() => {
       origin: '*',
       methods: ['GET', 'POST'],
     },
-    maxHttpBufferSize: 10 * 1024 * 1024 * 1024, // 10GB max file size
-    pingInterval: 25000, // Send ping every 25 seconds
-    pingTimeout: 60000, // Wait 60 seconds for pong before disconnecting
+    // Must be > chunk size + Socket.io framing overhead.
+    // Client sends 2MB chunks; 20MB gives 10× headroom for framing + concurrent windows.
+    maxHttpBufferSize: 20 * 1024 * 1024, // 20 MB
+    pingInterval: 25000,
+    pingTimeout: 30000,  // Faster stale-connection detection
   });
 
   io.on('connection', (socket) => {

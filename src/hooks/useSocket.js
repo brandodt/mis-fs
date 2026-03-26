@@ -53,7 +53,7 @@ export function setupGlobalListeners(socket) {
     store.updateActiveTransfer(transferId, { progress, status: 'receiving' });
   });
 
-  // All chunks received — reassemble blob
+  // All chunks received — reassemble blob and auto-download
   socket.on('files:complete', (data) => {
     console.log('[Complete] File transfer completed:', data.filename);
 
@@ -69,8 +69,18 @@ export function setupGlobalListeners(socket) {
 
       console.log(`[Complete] Combining ${ordered.length} chunks into blob…`);
 
-      const blob = new Blob(ordered, { type: data.fileType || 'application/octet-stream' });
+      const blob    = new Blob(ordered, { type: data.fileType || 'application/octet-stream' });
       const blobUrl = URL.createObjectURL(blob);
+
+      // ── Auto-download immediately ────────────────────────────────────────
+      const link = document.createElement('a');
+      link.href     = blobUrl;
+      link.download = data.filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      // Revoke after a short delay (browser needs time to pick up the URL)
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
 
       const transfer = store.activeTransfers.find((t) => t.id === transferId);
       if (transfer) {
@@ -85,13 +95,12 @@ export function setupGlobalListeners(socket) {
           receivedAt: Date.now(),
         });
 
-        // Dynamic import avoids CJS require() in an ESM module
         import('react-hot-toast').then(({ default: toast }) =>
-          toast.success(`${data.filename} received!`)
+          toast.success(`⬇️ ${data.filename} downloaded!`)
         );
 
         fileChunksBuffer.delete(transferId);
-        console.log(`[Complete] "${data.filename}" ready for download`);
+        console.log(`[Complete] "${data.filename}" auto-downloaded`);
       }
     }
   });

@@ -3,9 +3,14 @@ import { useAppStore } from '@/store/appStore';
 import toast from 'react-hot-toast';
 import { getSharedSocket, getFileChunksBuffer } from './useSocket';
 
-// 256 KB per chunk — safe for mobile WebSocket buffers.
-// Larger chunks (1MB+) flood Android Chrome's receive buffer causing disconnects.
-const CHUNK_SIZE = 256 * 1024;
+// 2 MB per chunk — larger chunks = far fewer round trips = much faster on LAN.
+// Server acks immediately after forwarding so the mobile-disconnect risk is gone.
+const CHUNK_SIZE = 2 * 1024 * 1024; // 2 MB
+
+// Number of chunks to send in parallel (sliding window).
+// Each in-flight chunk still waits for its own ack, so the server is never
+// flooded. Window of 4 gives ~4× throughput vs single-at-a-time.
+const WINDOW_SIZE = 4;
 
 // Module-level map so cancelTransfer() can signal the ack loop to abort
 const pendingTransfers = new Map();
@@ -52,14 +57,12 @@ export function useFileTransfer() {
     toast.success(`${files.length} file(s) selected`);
   }, [addFileToSend]);
 
-  // Send files in chunks with ack-based flow control.
-  // Each chunk waits for the server to confirm delivery before the next is sent.
-  // This prevents socket write-buffer overflow on slow/mobile clients.
+  // Send files in chunks with ack-based windowed flow control.
+  // WINDOW_SIZE chunks are in-flight simultaneously; each still requires an ack.
+  // This gives LAN-speed throughput without flooding mobile socket buffers.
   const sendFiles = useCallback(async (recipientId) => {
     const sock = getSharedSocket();
     if (!sock || !deviceInfo.id || filesToSend.length === 0) return;
-
-    console.log('[Send] Socket connected:', sock.connected, 'Socket ID:', sock.id);
 
     const store = useAppStore.getState();
     const recipientDevice = store.discoveredDevices.find(d => d.id === recipientId);
@@ -68,10 +71,9 @@ export function useFileTransfer() {
     console.log('[Send] Sending to:', recipientName);
 
     for (const f of filesToSend) {
-      const uniqueId = `${Date.now()}-${Math.random().toString(36).substr(2, 15)}`;
+      const uniqueId   = `${Date.now()}-${Math.random().toString(36).substr(2, 15)}`;
       const transferId = `send-${uniqueId}`;
 
-      // Store a cancel flag on the Map so cancelTransfer() can abort mid-loop
       pendingTransfers.set(transferId, { cancelled: false });
 
       addActiveTransfer({
@@ -88,60 +90,79 @@ export function useFileTransfer() {
         canCancel: true,
       });
 
-      const file = f.file;
+      const file        = f.file;
       const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
-      console.log(`[Send] "${f.name}" → ${totalChunks} chunks @ ${CHUNK_SIZE / 1024}KB`);
+      console.log(`[Send] "${f.name}" → ${totalChunks} chunks @ ${CHUNK_SIZE / 1024}KB, window=${WINDOW_SIZE}`);
 
-      try {
-        for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
-          // Honour cancellation between chunks
-          if (pendingTransfers.get(transferId)?.cancelled) {
-            console.log(`[Send] Transfer ${transferId} cancelled at chunk ${chunkIndex}`);
-            throw new Error('Transfer cancelled');
-          }
-
-          const start = chunkIndex * CHUNK_SIZE;
-          const end   = Math.min(start + CHUNK_SIZE, file.size);
-          const chunk = await file.slice(start, end).arrayBuffer();
-
-          // Emit with ack — await server confirmation before sending next chunk.
-          // This is the critical back-pressure mechanism.
-          await new Promise((resolve, reject) => {
-            const timeout = setTimeout(() => {
-              reject(new Error(`Chunk ${chunkIndex + 1} timed out (no ack from server)`));
-            }, 30_000); // 30s per-chunk timeout
-
-            sock.emitWithAck('files:sendChunk', {
-              fileId: uniqueId,
-              transferId,
-              senderId:    deviceInfo.id,
-              senderName:  deviceInfo.name,
-              recipientId,
-              filename:  f.name,
-              fileSize:  f.size,
-              fileType:  f.type,
-              chunkIndex,
-              totalChunks,
-              chunkData: new Uint8Array(chunk),
-            }).then((ackData) => {
-              clearTimeout(timeout);
-              if (ackData?.ok === false) {
-                reject(new Error(ackData.error || 'Server rejected chunk'));
-              } else {
-                resolve();
-              }
-            }).catch((err) => {
-              clearTimeout(timeout);
-              reject(err);
-            });
-          });
-
-          const progress = Math.round(((chunkIndex + 1) / totalChunks) * 100);
-          updateActiveTransfer(transferId, { progress, status: 'sending' });
-          console.log(`[Send] Chunk ${chunkIndex + 1}/${totalChunks} acked (${progress}%)`);
+      /**
+       * Sends a single chunk and returns a Promise that resolves when the
+       * server acks it. Rejects on timeout or server error.
+       */
+      const sendChunk = (chunkIndex) => new Promise(async (resolve, reject) => {
+        if (pendingTransfers.get(transferId)?.cancelled) {
+          return reject(new Error('Transfer cancelled'));
         }
 
-        console.log(`[Send] "${f.name}" complete`);
+        const start = chunkIndex * CHUNK_SIZE;
+        const end   = Math.min(start + CHUNK_SIZE, file.size);
+        const chunk = await file.slice(start, end).arrayBuffer().catch(reject);
+        if (!chunk) return;
+
+        const timeoutId = setTimeout(() => {
+          reject(new Error(`Chunk ${chunkIndex + 1} timed out`));
+        }, 60_000); // 60s per-chunk timeout (generous for large chunks)
+
+        sock.emitWithAck('files:sendChunk', {
+          fileId:      uniqueId,
+          transferId,
+          senderId:    deviceInfo.id,
+          senderName:  deviceInfo.name,
+          recipientId,
+          filename:    f.name,
+          fileSize:    f.size,
+          fileType:    f.type,
+          chunkIndex,
+          totalChunks,
+          chunkData:   new Uint8Array(chunk),
+        }).then((ackData) => {
+          clearTimeout(timeoutId);
+          if (ackData?.ok === false) reject(new Error(ackData.error || 'Server rejected chunk'));
+          else resolve();
+        }).catch((err) => { clearTimeout(timeoutId); reject(err); });
+      });
+
+      try {
+        // Sliding window: keep WINDOW_SIZE chunks in-flight at a time
+        let nextChunk  = 0;
+        let completed  = 0;
+        let failed     = null;
+
+        while (completed < totalChunks && !failed) {
+          if (pendingTransfers.get(transferId)?.cancelled) throw new Error('Transfer cancelled');
+
+          // Fill the window with pending chunks
+          const batch = [];
+          while (batch.length < WINDOW_SIZE && nextChunk < totalChunks) {
+            batch.push(sendChunk(nextChunk++));
+          }
+
+          // Wait for the whole window batch to ack
+          const results = await Promise.allSettled(batch);
+          for (const r of results) {
+            if (r.status === 'rejected') { failed = r.reason; break; }
+            completed++;
+          }
+
+          if (!failed) {
+            const progress = Math.round((completed / totalChunks) * 100);
+            updateActiveTransfer(transferId, { progress, status: 'sending' });
+            console.log(`[Send] ${completed}/${totalChunks} acked (${progress}%)`);
+          }
+        }
+
+        if (failed) throw failed;
+
+        console.log(`[Send] "${f.name}" complete (${totalChunks} chunks)`);
         pendingTransfers.delete(transferId);
 
       } catch (error) {
@@ -152,7 +173,7 @@ export function useFileTransfer() {
           console.error(`[Error] Failed to send "${f.name}":`, error);
           updateActiveTransfer(transferId, { status: 'error', progress: 0 });
           toast.error(`Failed to send ${f.name}: ${error.message}`);
-          return; // stop sending further files on error
+          return;
         }
       }
     }
