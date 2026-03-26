@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAppStore } from '@/store/appStore';
 import { useTheme } from '@/hooks/useTheme';
 import { useDeviceDiscovery } from '@/hooks/useDeviceDiscovery';
@@ -25,6 +25,8 @@ import {
   ArrowUpRight,
   ArrowDownLeft,
 } from 'lucide-react';
+import Avatar from 'boring-avatars';
+import { RadarView, AVATAR_COLORS } from '@/components/RadarView';
 
 const TRANSFER_SPEED_INTERVAL = 1000; // Update every 1 second
 
@@ -39,7 +41,6 @@ export default function Home() {
     useFileTransfer();
   const fileInputRef = useRef(null);
   const containerRef = useRef(null);
-  const radarRef = useRef(null);
   const transferSpeedsRef = useRef({});
 
   const deviceInfo = useAppStore((s) => s.deviceInfo);
@@ -91,17 +92,7 @@ export default function Home() {
     return () => clearInterval(interval);
   }, [activeTransfers]);
 
-  // Animate radar pulse
-  useEffect(() => {
-    if (radarRef.current && discoveredDevices.length > 0) {
-      gsap.to(radarRef.current, {
-        duration: 2,
-        repeat: -1,
-        opacity: 0.5,
-        ease: 'sine.inOut',
-      });
-    }
-  }, [discoveredDevices.length]);
+  // (Radar animation is now handled inside RadarView via Three.js + GSAP)
 
   // Animate theme toggle
   const handleThemeToggle = () => {
@@ -184,13 +175,16 @@ export default function Home() {
             <h1 className="text-xl font-bold text-gray-900 dark:text-white">MIS-FS</h1>
           </div>
 
-          {/* Current device name badge */}
+          {/* Current device name badge with avatar */}
           {deviceInfo.name && (
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 dark:bg-gray-800 rounded-full border border-gray-200 dark:border-gray-700">
-              <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse flex-shrink-0" />
-              <span className="text-sm font-semibold text-gray-800 dark:text-gray-200 max-w-[180px] truncate">
+            <div className="flex items-center gap-2 pl-1 pr-3 py-1 bg-gray-100 dark:bg-gray-800 rounded-full border border-gray-200 dark:border-gray-700">
+              <div className="w-7 h-7 rounded-full overflow-hidden flex-shrink-0">
+                <Avatar size={28} name={deviceInfo.name} variant="beam" colors={AVATAR_COLORS} />
+              </div>
+              <span className="text-sm font-semibold text-gray-800 dark:text-gray-200 max-w-[160px] truncate">
                 {deviceInfo.name}
               </span>
+              <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse flex-shrink-0" />
             </div>
           )}
 
@@ -376,37 +370,41 @@ export default function Home() {
                       Send to device:
                     </p>
 
-                    {/* Device Card List */}
-                    <div className="space-y-3 max-h-72 overflow-y-auto">
+                    {/* ── Three.js Radar with avatars ─────────────────── */}
+                    <RadarView
+                      devices={discoveredDevices}
+                      onSendToDevice={handleSendFiles}
+                    />
+
+                    {/* ── Device card list (also clickable) ──────────── */}
+                    <div className="space-y-2 mt-5 max-h-56 overflow-y-auto">
                       {discoveredDevices.map((device) => (
                         <button
                           key={device.id}
                           id={`device-send-${device.id}`}
                           data-device-bubble={device.id}
                           onClick={() => handleSendFiles(device.id)}
-                          className="w-full flex items-center gap-4 p-4 bg-white dark:bg-gray-700/50 rounded-xl border-2 border-transparent hover:border-blue-400 dark:hover:border-blue-500 hover:shadow-md transition-all duration-200 group text-left"
+                          className="w-full flex items-center gap-3 p-3 bg-white dark:bg-gray-700/50 rounded-xl border-2 border-transparent hover:border-blue-400 dark:hover:border-blue-500 hover:shadow-md transition-all duration-200 group text-left"
                         >
-                          {/* Avatar */}
-                          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center flex-shrink-0 shadow-sm">
-                            <span className="text-white font-bold text-lg select-none">
-                              {device.name.charAt(0).toUpperCase()}
-                            </span>
+                          {/* boring-avatars avatar */}
+                          <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 border border-blue-200 dark:border-blue-700">
+                            <Avatar size={40} name={device.name} variant="beam" colors={AVATAR_COLORS} />
                           </div>
 
                           {/* Name & status */}
                           <div className="flex-1 min-w-0">
-                            <p className="text-base font-bold text-gray-900 dark:text-gray-100 truncate">
+                            <p className="text-sm font-bold text-gray-900 dark:text-gray-100 truncate">
                               {device.name}
                             </p>
-                            <p className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1 mt-0.5">
+                            <p className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
                               <span className="inline-block w-1.5 h-1.5 rounded-full bg-green-500" />
                               Ready to receive
                             </p>
                           </div>
 
                           {/* Send button */}
-                          <div className="flex-shrink-0 flex items-center gap-2 px-4 py-2 bg-blue-500 group-hover:bg-blue-600 text-white text-sm font-semibold rounded-lg transition-colors">
-                            <Send className="w-3.5 h-3.5" />
+                          <div className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-blue-500 group-hover:bg-blue-600 text-white text-xs font-semibold rounded-lg transition-colors">
+                            <Send className="w-3 h-3" />
                             Send
                           </div>
                         </button>
@@ -414,7 +412,7 @@ export default function Home() {
                     </div>
 
                     <p className="text-center text-xs text-gray-500 dark:text-gray-400 mt-3">
-                      {discoveredDevices.length} device{discoveredDevices.length !== 1 ? 's' : ''} available
+                      {discoveredDevices.length} device{discoveredDevices.length !== 1 ? 's' : ''} available — click bubble or card to send
                     </p>
                   </div>
                 )}
