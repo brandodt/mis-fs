@@ -183,6 +183,17 @@ export default function Home() {
             <div className="w-2 h-2 rounded-full bg-gradient-to-r from-blue-500 to-purple-500" />
             <h1 className="text-xl font-bold text-gray-900 dark:text-white">MIS-FS</h1>
           </div>
+
+          {/* Current device name badge */}
+          {deviceInfo.name && (
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 dark:bg-gray-800 rounded-full border border-gray-200 dark:border-gray-700">
+              <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse flex-shrink-0" />
+              <span className="text-sm font-semibold text-gray-800 dark:text-gray-200 max-w-[180px] truncate">
+                {deviceInfo.name}
+              </span>
+            </div>
+          )}
+
           <div className="flex items-center gap-2">
             <button
               data-theme-button
@@ -361,49 +372,50 @@ export default function Home() {
                   </div>
                 ) : (
                   <div>
-                    <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-6">
+                    <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">
                       Send to device:
                     </p>
 
-                    {/* Radar View */}
-                    <div className="relative w-full max-w-md mx-auto">
-                      <div ref={radarRef} className="w-full aspect-square rounded-full border-2 border-gray-300 dark:border-gray-600 relative">
-                        {/* Radar rings */}
-                        <div className="absolute inset-0 rounded-full border border-gray-200 dark:border-gray-700" style={{ top: '25%', left: '25%', right: '25%', bottom: '25%' }} />
-                        <div className="absolute inset-0 rounded-full border border-gray-100 dark:border-gray-800" style={{ top: '12.5%', left: '12.5%', right: '12.5%', bottom: '12.5%' }} />
+                    {/* Device Card List */}
+                    <div className="space-y-3 max-h-72 overflow-y-auto">
+                      {discoveredDevices.map((device) => (
+                        <button
+                          key={device.id}
+                          id={`device-send-${device.id}`}
+                          data-device-bubble={device.id}
+                          onClick={() => handleSendFiles(device.id)}
+                          className="w-full flex items-center gap-4 p-4 bg-white dark:bg-gray-700/50 rounded-xl border-2 border-transparent hover:border-blue-400 dark:hover:border-blue-500 hover:shadow-md transition-all duration-200 group text-left"
+                        >
+                          {/* Avatar */}
+                          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center flex-shrink-0 shadow-sm">
+                            <span className="text-white font-bold text-lg select-none">
+                              {device.name.charAt(0).toUpperCase()}
+                            </span>
+                          </div>
 
-                        {/* Center dot */}
-                        <div className="absolute top-1/2 left-1/2 w-2 h-2 bg-gray-600 dark:bg-gray-400 rounded-full -translate-x-1/2 -translate-y-1/2" />
+                          {/* Name & status */}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-base font-bold text-gray-900 dark:text-gray-100 truncate">
+                              {device.name}
+                            </p>
+                            <p className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1 mt-0.5">
+                              <span className="inline-block w-1.5 h-1.5 rounded-full bg-green-500" />
+                              Ready to receive
+                            </p>
+                          </div>
 
-                        {/* Device bubbles */}
-                        {discoveredDevices.map((device, index) => {
-                          const angle = (360 / discoveredDevices.length) * index;
-                          const radius = 35; // percentage
-
-                          return (
-                            <div key={device.id} className="absolute flex flex-col items-center" style={{
-                              top: `calc(50% + ${radius * Math.sin((angle * Math.PI) / 180)}% - 50px)`,
-                              left: `calc(50% + ${radius * Math.cos((angle * Math.PI) / 180)}% - 40px)`,
-                              width: '80px',
-                            }}>
-                              <button
-                                data-device-bubble={device.id}
-                                onClick={() => handleSendFiles(device.id)}
-                                className="w-16 h-16 rounded-full border-2 border-blue-400 dark:border-blue-600 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-900/50 flex flex-col items-center justify-center cursor-pointer hover:shadow-lg transition-all duration-300 group"
-                              >
-                                <Inbox className="w-5 h-5 text-blue-600 dark:text-blue-400 group-hover:scale-110 transition-transform" />
-                              </button>
-                              <span className="text-xs font-semibold text-gray-700 dark:text-gray-300 text-center line-clamp-2 mt-2 px-1 leading-tight">
-                                {device.name}
-                              </span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                      <p className="text-center text-xs text-gray-500 dark:text-gray-400 mt-4">
-                        Click a device to send files
-                      </p>
+                          {/* Send button */}
+                          <div className="flex-shrink-0 flex items-center gap-2 px-4 py-2 bg-blue-500 group-hover:bg-blue-600 text-white text-sm font-semibold rounded-lg transition-colors">
+                            <Send className="w-3.5 h-3.5" />
+                            Send
+                          </div>
+                        </button>
+                      ))}
                     </div>
+
+                    <p className="text-center text-xs text-gray-500 dark:text-gray-400 mt-3">
+                      {discoveredDevices.length} device{discoveredDevices.length !== 1 ? 's' : ''} available
+                    </p>
                   </div>
                 )}
               </div>
@@ -429,8 +441,17 @@ export default function Home() {
               <h2 className="text-3xl font-bold text-green-900 dark:text-green-100 mb-2">
                 Ready to Receive
               </h2>
-              <p className="text-green-700 dark:text-green-200 max-w-md mx-auto">
-                Your device is listening for files from other devices on the network
+              {/* Your device name — share this so senders can identify you */}
+              {deviceInfo.name && (
+                <div className="inline-flex items-center gap-2.5 bg-green-100 dark:bg-green-900/40 border border-green-300 dark:border-green-700 rounded-full px-5 py-2 mb-4">
+                  <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                  <span className="text-sm font-bold text-green-800 dark:text-green-200 tracking-wide">
+                    {deviceInfo.name}
+                  </span>
+                </div>
+              )}
+              <p className="text-green-700 dark:text-green-200 max-w-md mx-auto text-sm">
+                Tell the sender to look for <strong className="font-semibold">{deviceInfo.name}</strong> and click Send
               </p>
             </div>
 

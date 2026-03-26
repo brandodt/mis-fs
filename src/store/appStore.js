@@ -39,6 +39,16 @@ export const useAppStore = create((set, get) => ({
   })),
   clearReceivedFiles: () => set({ filesReceived: [] }),
 
+  // Session files — used by usePageLeaveWarning to warn before tab close
+  sessionFiles: [],
+  addSessionFile: (file) => set((state) => ({
+    sessionFiles: [...state.sessionFiles, file],
+  })),
+  removeSessionFile: (fileId) => set((state) => ({
+    sessionFiles: state.sessionFiles.filter(f => f.id !== fileId),
+  })),
+  clearSessionFiles: () => set({ sessionFiles: [] }),
+
   // Active transfers
   activeTransfers: [],
   addActiveTransfer: (transfer) => set((state) => ({
