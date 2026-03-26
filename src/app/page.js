@@ -175,18 +175,6 @@ export default function Home() {
             <h1 className="text-xl font-bold text-gray-900 dark:text-white">MIS-FS</h1>
           </div>
 
-          {/* Current device name badge with avatar */}
-          {deviceInfo.name && (
-            <div className="flex items-center gap-2 pl-1 pr-3 py-1 bg-gray-100 dark:bg-gray-800 rounded-full border border-gray-200 dark:border-gray-700">
-              <div className="w-7 h-7 rounded-full overflow-hidden flex-shrink-0">
-                <Avatar size={28} name={deviceInfo.name} variant="beam" colors={AVATAR_COLORS} />
-              </div>
-              <span className="text-sm font-semibold text-gray-800 dark:text-gray-200 max-w-[160px] truncate">
-                {deviceInfo.name}
-              </span>
-              <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse flex-shrink-0" />
-            </div>
-          )}
 
           <div className="flex items-center gap-2">
             <button
@@ -366,90 +354,35 @@ export default function Home() {
                   </div>
                 ) : (
                   <div>
-                    <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">
-                      Send to device:
-                    </p>
-
-                    {/* ── Three.js Radar with avatars ─────────────────── */}
                     <RadarView
                       devices={discoveredDevices}
                       onSendToDevice={handleSendFiles}
                     />
-
-                    {/* ── Device card list (also clickable) ──────────── */}
-                    <div className="space-y-2 mt-5 max-h-56 overflow-y-auto">
-                      {discoveredDevices.map((device) => (
-                        <button
-                          key={device.id}
-                          id={`device-send-${device.id}`}
-                          data-device-bubble={device.id}
-                          onClick={() => handleSendFiles(device.id)}
-                          className="w-full flex items-center gap-3 p-3 bg-white dark:bg-gray-700/50 rounded-xl border-2 border-transparent hover:border-blue-400 dark:hover:border-blue-500 hover:shadow-md transition-all duration-200 group text-left"
-                        >
-                          {/* boring-avatars avatar */}
-                          <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 border border-blue-200 dark:border-blue-700">
-                            <Avatar size={40} name={device.name} variant="beam" colors={AVATAR_COLORS} />
-                          </div>
-
-                          {/* Name & status */}
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-bold text-gray-900 dark:text-gray-100 truncate">
-                              {device.name}
-                            </p>
-                            <p className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
-                              <span className="inline-block w-1.5 h-1.5 rounded-full bg-green-500" />
-                              Ready to receive
-                            </p>
-                          </div>
-
-                          {/* Send button */}
-                          <div className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-blue-500 group-hover:bg-blue-600 text-white text-xs font-semibold rounded-lg transition-colors">
-                            <Send className="w-3 h-3" />
-                            Send
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-
-                    <p className="text-center text-xs text-gray-500 dark:text-gray-400 mt-3">
-                      {discoveredDevices.length} device{discoveredDevices.length !== 1 ? 's' : ''} available — click bubble or card to send
-                    </p>
                   </div>
                 )}
-              </div>
-            )}
-
-            {discoveredDevices.length > 0 && filesToSend.length === 0 && (
-              <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-2xl p-10 text-center border border-blue-200 dark:border-blue-800">
-                <CheckCircle className="w-12 h-12 text-blue-500 mx-auto mb-4" />
-                <p className="text-blue-900 dark:text-blue-100 text-lg font-semibold">
-                  {discoveredDevices.length} device ready
-                </p>
-                <p className="text-blue-700 dark:text-blue-300 mt-2 text-sm">
-                  Select files to start sharing
-                </p>
               </div>
             )}
           </div>
         ) : (
           <div className="space-y-10">
-            {/* Receive Status */}
-            <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-2xl p-12 text-center border border-green-200 dark:border-green-800">
-              <Inbox className="w-16 h-16 text-green-500 mx-auto mb-4" />
-              <h2 className="text-3xl font-bold text-green-900 dark:text-green-100 mb-2">
-                Ready to Receive
-              </h2>
-              {/* Your device name — share this so senders can identify you */}
+            {/* Receive Status — avatar + name, single identity display */}
+            <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-2xl p-10 text-center border border-green-200 dark:border-green-800">
+              {/* Large avatar */}
               {deviceInfo.name && (
-                <div className="inline-flex items-center gap-2.5 bg-green-100 dark:bg-green-900/40 border border-green-300 dark:border-green-700 rounded-full px-5 py-2 mb-4">
-                  <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                  <span className="text-sm font-bold text-green-800 dark:text-green-200 tracking-wide">
-                    {deviceInfo.name}
-                  </span>
+                <div className="w-20 h-20 rounded-full overflow-hidden mx-auto mb-4 border-4 border-green-300 dark:border-green-600 shadow-lg shadow-green-500/20">
+                  <Avatar size={80} name={deviceInfo.name} variant="beam" colors={AVATAR_COLORS} />
                 </div>
               )}
-              <p className="text-green-700 dark:text-green-200 max-w-md mx-auto text-sm">
-                Tell the sender to look for <strong className="font-semibold">{deviceInfo.name}</strong> and click Send
+
+              <h2 className="text-2xl font-bold text-green-900 dark:text-green-100 mb-1">
+                {deviceInfo.name || 'Ready to Receive'}
+              </h2>
+              <p className="text-xs text-green-600 dark:text-green-400 flex items-center justify-center gap-1.5 mb-3">
+                <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse inline-block" />
+                Listening for incoming files
+              </p>
+              <p className="text-green-700/70 dark:text-green-300/60 text-xs max-w-xs mx-auto">
+                Tell the sender to switch to Send mode and click your name
               </p>
             </div>
 
