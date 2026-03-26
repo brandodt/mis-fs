@@ -70,8 +70,10 @@ app.prepare().then(() => {
       callback(Array.from(devices.values()));
     });
 
-    // Handle chunked file transfer
-    socket.on('files:sendChunk', (data) => {
+    // Handle chunked file transfer with ack-based flow control.
+    // The sender MUST use the ack callback to pace chunks — without it the
+    // socket write-buffer floods on slow clients (mobile) causing disconnects.
+    socket.on('files:sendChunk', (data, ack) => {
       const recipientDevice = devices.get(data.recipientId);
 
       if (!recipientDevice) {
@@ -79,6 +81,7 @@ app.prepare().then(() => {
           error: 'Recipient device not found',
           recipientId: data.recipientId,
         });
+        if (typeof ack === 'function') ack({ ok: false, error: 'Recipient not found' });
         return;
       }
 
@@ -89,6 +92,7 @@ app.prepare().then(() => {
           error: 'Recipient not connected',
           recipientId: data.recipientId,
         });
+        if (typeof ack === 'function') ack({ ok: false, error: 'Recipient offline' });
         return;
       }
 
@@ -108,7 +112,13 @@ app.prepare().then(() => {
         senderName: data.senderName,
       });
 
-      // Notify sender of progress
+      // Ack the sender NOW — the client-side files:chunk listener does not call
+      // ack() so waiting for a recipient ack would deadlock (30s timeout).
+      // Acking here means "I've queued delivery to the recipient" which is
+      // sufficient backpressure: sender won't flood the buffer past this point.
+      if (typeof ack === 'function') ack({ ok: true });
+
+      // Notify sender of progress immediately (don't wait for recipient ack)
       socket.emit('files:progress', {
         transferId: data.transferId,
         chunkIndex: data.chunkIndex,
@@ -116,7 +126,7 @@ app.prepare().then(() => {
         progress: Math.round(((data.chunkIndex + 1) / data.totalChunks) * 100),
       });
 
-      // If this is the last chunk, notify recipient that transfer is complete
+      // Last chunk — tell both sides the transfer is complete
       if (data.chunkIndex === data.totalChunks - 1) {
         recipientSocket.emit('files:complete', {
           transferId: data.transferId,

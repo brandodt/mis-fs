@@ -65,10 +65,16 @@ export function useDeviceDiscovery() {
 
     registerDevice();
 
-    // Register every 30 seconds as heartbeat
-    const registerInterval = setInterval(registerDevice, 30 * 1000);
+    // Re-register immediately on reconnect (the primary reason for a heartbeat).
+    // We keep a long fallback interval (5 min) only for edge cases where the
+    // socket stays connected but the server restarts without a TCP disconnect.
+    sock?.on('reconnect', registerDevice);
+    const registerInterval = setInterval(registerDevice, 5 * 60 * 1000);
 
-    return () => clearInterval(registerInterval);
+    return () => {
+      clearInterval(registerInterval);
+      sock?.off('reconnect', registerDevice);
+    };
   }, [deviceInfo.id, registerDevice]);
 
   return {
